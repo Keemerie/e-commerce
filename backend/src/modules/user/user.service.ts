@@ -6,8 +6,6 @@ import { Nullable } from '../../custom';
 import { PrismaService } from '../../prisma.service';
 import { OAuthUser } from '../auth/auth.service';
 
-export type SecuredUser = Omit<User, 'password'>;
-
 @Injectable()
 export class UserService {
   constructor(private readonly prismaService: PrismaService) {}
@@ -58,10 +56,5 @@ export class UserService {
         password: await hash(dto.password),
       },
     });
-  }
-
-  toPublicUser(user: User): SecuredUser {
-    const { password, ...securedUser } = user;
-    return securedUser;
   }
 }

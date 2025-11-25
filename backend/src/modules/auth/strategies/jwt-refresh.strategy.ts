@@ -16,7 +16,7 @@ const cookieExtractor = (req: Request): string | null => {
 export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
   constructor(
     private readonly userService: UserService,
-    private readonly configService: ConfigService,
+    configService: ConfigService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([(req: Request) => cookieExtractor(req)]),
@@ -31,6 +31,6 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
       throw new UnauthorizedException();
     }
 
-    return this.userService.toPublicUser(user);
+    return user;
   }
 }

@@ -4,8 +4,9 @@ import { verify } from 'argon2';
 import { Response } from 'express';
 import { User } from '../../../generated/prisma/client';
 import { DateTimeUtil } from '../../utils/date-time-util';
-import { SecuredUser, UserService } from '../user/user.service';
+import { UserService } from '../user/user.service';
 import { ConfigService } from '@nestjs/config';
+import { LoginDto } from './dto/login.dto';
 
 export type OAuthUser = {
   email: string;
@@ -26,16 +27,17 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  async validateUser(email: string, pass: string): Promise<SecuredUser> {
+  async validateUserLogin({ email, password }: LoginDto): Promise<JwtTokens> {
     const user = await this.userService.findByEmail(email);
 
     if (!user) throw new NotFoundException('User not found');
 
     if (!user.password) throw new BadRequestException('User has no local credentials');
 
-    if (!(await verify(user.password, pass))) throw new BadRequestException('Invalid credentials');
+    if (!(await verify(user.password, password)))
+      throw new BadRequestException('Invalid credentials');
 
-    return this.userService.toPublicUser(user);
+    return this.generateJwt(user.id);
   }
 
   async validateOAuthLogin(user: OAuthUser): Promise<User> {

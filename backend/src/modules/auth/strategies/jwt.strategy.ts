@@ -2,12 +2,13 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SecuredUser, UserService } from '../../user/user.service';
+import { UserService } from '../../user/user.service';
+import { User } from '../../../../generated/prisma/client';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private readonly configService: ConfigService,
+    configService: ConfigService,
     private readonly userService: UserService,
   ) {
     super({
@@ -17,12 +18,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: string }): Promise<SecuredUser> {
+  async validate(payload: { sub: string }): Promise<User> {
     const user = await this.userService.findById(payload.sub);
     if (!user) {
       throw new UnauthorizedException();
     }
 
-    return this.userService.toPublicUser(user);
+    return user;
   }
 }
