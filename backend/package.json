@@ -33,6 +33,7 @@
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
     "dayjs": "^1.11.19",
+    "joi": "^18.0.2",
     "passport-google-oauth2": "^0.2.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",

@@ -57,4 +57,19 @@ export class UserService {
       },
     });
   }
+
+  async updateRefreshToken(id: string, refreshToken: string) {
+    const updated = await this.prismaService.user.update({
+      where: { id },
+      data: {
+        refreshToken,
+      },
+    });
+
+    if (!updated) {
+      throw new NotFoundException('User not found');
+    }
+
+    return updated;
+  }
 }

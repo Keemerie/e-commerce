@@ -1,6 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { verify } from 'argon2';
+import { hash, verify } from 'argon2';
 import { Response } from 'express';
 import { User } from '../../../generated/prisma/client';
 import { DateTimeUtil } from '../../utils/date-time-util';
@@ -15,6 +20,7 @@ export type OAuthUser = {
 };
 
 export type JwtTokens = {
+  userId: string;
   accessToken: string;
   refreshToken: string;
 };
@@ -27,7 +33,7 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  async validateUserLogin({ email, password }: LoginDto): Promise<JwtTokens> {
+  async validateUserLogin({ email, password }: LoginDto): Promise<User> {
     const user = await this.userService.findByEmail(email);
 
     if (!user) throw new NotFoundException('User not found');
@@ -37,7 +43,7 @@ export class AuthService {
     if (!(await verify(user.password, password)))
       throw new BadRequestException('Invalid credentials');
 
-    return this.generateJwt(user.id);
+    return user;
   }
 
   async validateOAuthLogin(user: OAuthUser): Promise<User> {
@@ -53,23 +59,45 @@ export class AuthService {
     return existingUser;
   }
 
-  setRefreshToken(res: Response, refreshToken: string) {
-    res.cookie('refresh_token', refreshToken, {
+  async verifyUserRefreshToken(refreshToken: string, userId: string): Promise<User> {
+    const user = await this.userService.findById(userId);
+
+    if (!user || !user.refreshToken) {
+      throw new UnauthorizedException();
+    }
+
+    const refreshTokenMatches = await verify(user.refreshToken, refreshToken);
+    if (!refreshTokenMatches) {
+      throw new UnauthorizedException();
+    }
+
+    return user;
+  }
+
+  async login(res: Response, userId: string) {
+    const tokens = this.generateJwt(userId);
+
+    await this.userService.updateRefreshToken(userId, await hash(tokens.refreshToken));
+
+    res.cookie('refresh_token', tokens.refreshToken, {
       httpOnly: true,
       maxAge: DateTimeUtil.DAY * 30,
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: this.configService.getOrThrow('NODE_ENV') === 'production',
       path: '/auth/refresh',
     });
+
+    return tokens;
   }
 
-  generateJwt(userId: string): JwtTokens {
+  private generateJwt(userId: string): JwtTokens {
     const payload = { sub: userId };
     return {
+      userId,
       accessToken: this.jwtService.sign(payload, { expiresIn: '15m' }),
       refreshToken: this.jwtService.sign(payload, {
         expiresIn: '7d',
-        secret: this.configService.get('JWT_REFRESH_SECRET'),
+        secret: this.configService.getOrThrow('JWT_REFRESH_SECRET'),
       }),
     };
   }

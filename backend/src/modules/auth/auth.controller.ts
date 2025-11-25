@@ -18,9 +18,9 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const { accessToken, refreshToken } = await this.authService.validateUserLogin(dto);
+    const user = await this.authService.validateUserLogin(dto);
 
-    this.authService.setRefreshToken(res, refreshToken);
+    const { accessToken } = await this.authService.login(res, user.id);
 
     return new AuthResponseDto(accessToken);
   }
@@ -31,20 +31,16 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(GoogleOauthGuard)
-  googleAuthCallback(@UserDecorator() user: User, @Res() res: Response) {
-    const { refreshToken } = this.authService.generateJwt(user.id);
+  async googleAuthCallback(@UserDecorator() user: User, @Res() res: Response) {
+    await this.authService.login(res, user.id);
 
-    this.authService.setRefreshToken(res, refreshToken);
-
-    return res.redirect(this.configService.get('CLIENT_URL')!);
+    return res.redirect(this.configService.getOrThrow('CLIENT_URL'));
   }
 
   @Post('refresh')
   @UseGuards(JwtRefreshAuthGuard)
-  refreshTokens(@UserDecorator() user: User, @Res({ passthrough: true }) res: Response) {
-    const { accessToken, refreshToken } = this.authService.generateJwt(user.id);
-
-    this.authService.setRefreshToken(res, refreshToken);
+  async refreshTokens(@UserDecorator() user: User, @Res({ passthrough: true }) res: Response) {
+    const { accessToken } = await this.authService.login(res, user.id);
 
     return new AuthResponseDto(accessToken);
   }

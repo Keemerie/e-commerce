@@ -5,19 +5,21 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
   id String @id @default(uuid())
 
-  email    String   @unique
-  name     String?
-  password String?
-  avatar   String   @default("https://www.gravatar.com/avatar/")
-  stores   Store[]
-  reviews  Review[]
-  orders   Order[]
+  email        String   @unique
+  name         String?
+  password     String?
+  avatar       String   @default("https://www.gravatar.com/avatar/")
+  stores       Store[]
+  reviews      Review[]
+  orders       Order[]
   // favorites Product[] TODO
+  refreshToken String?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
